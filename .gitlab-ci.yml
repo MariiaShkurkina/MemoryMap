@@ -1,0 +1,28 @@
+image: openjdk:25-jdk
+
+stages:
+  - quality
+  - build
+  - test
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .gradle/wrapper/
+    - .gradle/caches/
+
+code-quality:
+  stage: quality
+  script:
+    - ./gradlew check
+
+build:
+  stage: build
+  script:
+    - ./gradlew assemble
+
+test:
+  stage: test
+  script:
+    - ./gradlew test
+
