@@ -1,0 +1,4 @@
+- sonarQube(sonarLint) https://plugins.jetbrains.com/plugin/7973-sonarqube-for-ide
+- checkstyle https://plugins.jetbrains.com/plugin/1065-checkstyle-idea
+- spotbugs-idea https://plugins.jetbrains.com/plugin/14014-spotbugs-idea
+- pmd https://plugins.jetbrains.com/plugin/1137-pmd
