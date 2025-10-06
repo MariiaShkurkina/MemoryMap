@@ -10,6 +10,7 @@ dependency-reduced-pom.xml
 
 .gradle
 build
+out
 
 ### IntelliJ IDEA ###
 !.idea/codeStyles/Project.xml

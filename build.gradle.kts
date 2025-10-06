@@ -1,8 +1,11 @@
 plugins {
+    application
     id("java")
     checkstyle
     id("com.github.spotbugs") version "6.4.2"
     pmd
+
+    id("io.freefair.lombok") version "9.0.0"
 }
 
 group = "ru.tbank.education"
