@@ -1,4 +1,4 @@
-image: openjdk:25-jdk
+image: gradle:9.1.0-jdk25
 
 stages:
   - quality
