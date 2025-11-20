@@ -1,7 +1,11 @@
 package ru.tbank.education;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
 public class Example {
     public static void main(String[] args) {
-        //todo:
+        SpringApplication.run(Example.class, args);
     }
 }
