@@ -36,6 +36,25 @@ dependencies {
     implementation ("org.springframework.boot:spring-boot-starter-web")
     implementation ("org.springframework.boot:spring-boot-starter-actuator")
     testImplementation ("org.springframework.boot:spring-boot-starter-test")
+
+    compileOnly("org.projectlombok:lombok:1.18.34")
+    annotationProcessor("org.projectlombok:lombok:1.18.34")
+
+    testCompileOnly("org.projectlombok:lombok:1.18.34")
+    testAnnotationProcessor("org.projectlombok:lombok:1.18.34")
+
+
+    // ✅ JPA + Hibernate
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+
+    // (опционально, но полезно)
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    implementation("org.flywaydb:flyway-core:11.20.2")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql:11.20.2")
+
+    runtimeOnly("org.postgresql:postgresql")
+
 }
 
 

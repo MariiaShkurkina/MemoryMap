@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/travelmap
+    username: postgres
+    password: Fy1976242
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
