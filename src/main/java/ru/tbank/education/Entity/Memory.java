@@ -2,10 +2,7 @@ package ru.tbank.education.Entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -32,7 +29,7 @@ public class Memory {
     @Column(columnDefinition = "TEXT")
     private String note;
 
-    // дата/время посещения (можно null)
+    // дата/время посещения
     private LocalDateTime visitedAt;
 
     // координаты для карты

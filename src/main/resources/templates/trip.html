@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Поездка</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background: #0b0f16;
+            color: #eaf0ff;
+        }
+
+        /* ====== Top bar ====== */
+        .topbar {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(10, 14, 22, 0.85);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .brand {
+            font-weight: 800;
+            letter-spacing: 0.2px;
+            font-size: 18px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .brand .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #5eead4;
+            box-shadow: 0 0 18px rgba(94,234,212,0.35);
+        }
+        .btn {
+            border: 0;
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            background: rgba(255,255,255,0.08);
+            color: #eaf0ff;
+            transition: 0.2s;
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .btn:hover { background: rgba(255,255,255,0.14); }
+        .btn-danger { background: rgba(239,68,68,0.20); }
+        .btn-danger:hover { background: rgba(239,68,68,0.30); }
+        .btn-primary{
+            background: rgba(94,234,212,0.18);
+            border: 1px solid rgba(94,234,212,0.25);
+            color: #eafffb;
+        }
+        .btn-primary:hover{ background: rgba(94,234,212,0.26); }
+
+        /* ====== Layout ====== */
+        .layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 14px;
+            padding: 14px;
+            height: calc(100vh - 64px);
+        }
+
+        /* ====== Left column ====== */
+        .left {
+            border-radius: 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .left-header {
+            padding: 14px 14px 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .left-header h2 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .left-header .hint {
+            opacity: 0.7;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* ====== Filter by tags ====== */
+        .filter-panel{
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(0,0,0,0.14);
+        }
+        .filter-title{
+            font-weight: 900;
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        .filter-row{
+            display:flex;
+            gap: 8px;
+            align-items:center;
+            margin-bottom: 8px;
+        }
+        .filter-row input{
+            flex: 1;
+            min-width: 140px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.20);
+            color: #eaf0ff;
+            outline: none;
+        }
+        .filter-row input:focus{
+            border-color: rgba(94,234,212,0.45);
+            box-shadow: 0 0 0 3px rgba(94,234,212,0.12);
+        }
+        .filter-tags{
+            display:flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.16);
+            min-height: 44px;
+            max-height: 160px;
+            overflow: auto;
+        }
+        .tag-chip{
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.06);
+            color: #eaf0ff;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+            transition: 0.15s;
+        }
+        .tag-chip:hover{
+            background: rgba(255,255,255,0.10);
+            border-color: rgba(94,234,212,0.30);
+        }
+        .tag-chip.selected{
+            background: rgba(94,234,212,0.18);
+            border-color: rgba(94,234,212,0.45);
+            color: #eafffb;
+            box-shadow: 0 0 0 3px rgba(94,234,212,0.10);
+        }
+        .filter-actions{
+            display:flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .muted{
+            opacity: 0.7;
+            font-size: 12px;
+        }
+
+        .mem-list {
+            padding: 12px;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+        .mem-card {
+            display: grid;
+            grid-template-columns: 72px 1fr;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.18);
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .mem-card:hover {
+            transform: translateY(-1px);
+            border-color: rgba(94,234,212,0.35);
+            box-shadow: 0 10px 22px rgba(0,0,0,0.25);
+        }
+        .mem-thumb {
+            width: 72px;
+            height: 72px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+            position: relative;
+        }
+        .mem-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .mem-count-badge {
+            position: absolute;
+            left: 6px;
+            bottom: 6px;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            font-weight: 800;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 14px;
+            backdrop-filter: blur(6px);
+        }
+        .mem-title {
+            font-weight: 800;
+            margin: 2px 0 4px 0;
+            font-size: 14px;
+            line-height: 1.2;
+        }
+        .mem-sub {
+            opacity: 0.72;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .mem-sub code {
+            opacity: 0.8;
+            font-size: 11px;
+        }
+
+        /* ====== Right (map) ====== */
+        .right {
+            border-radius: 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            overflow: hidden;
+            position: relative;
+            min-height: 0;
+        }
+        #map { width: 100%; height: 100%; }
+
+        /* ====== Photo marker ====== */
+        .mem-pin-wrap{
+            position: relative;
+            width: 92px;
+            height: 92px;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 4px solid #fff;
+            box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+            background: #111;
+        }
+        .mem-pin-wrap img{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .mem-pin-wrap::after{
+            content:"";
+            position:absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: -14px;
+            width: 0; height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 14px solid #fff;
+            filter: drop-shadow(0 6px 6px rgba(0,0,0,0.25));
+        }
+        .mem-count{
+            position:absolute;
+            left: 8px;
+            bottom: 8px;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            font-weight: 800;
+            font-size: 14px;
+            padding: 3px 8px;
+            border-radius: 14px;
+            backdrop-filter: blur(6px);
+        }
+        .leaflet-div-icon{
+            background: transparent !important;
+            border: none !important;
+        }
+
+        /* ====== MODAL (z-index выше карты) ====== */
+        #createModal{
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.60);
+            backdrop-filter: blur(6px);
+            z-index: 999999;
+            padding: 18px;
+        }
+        #createModal .modal-card{
+            width: min(720px, 96vw);
+            max-height: 90vh;
+            overflow: auto;
+            border-radius: 18px;
+            background: #0f172a;
+            border: 1px solid rgba(255,255,255,0.10);
+            box-shadow: 0 24px 70px rgba(0,0,0,0.55);
+            padding: 16px;
+            position: relative;
+            color: #eaf0ff;
+        }
+        .modal-head{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .modal-title{
+            font-weight: 900;
+            font-size: 16px;
+        }
+        .xbtn{
+            background: rgba(255,255,255,0.08);
+            border: 0;
+            color: #eaf0ff;
+            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-weight: 900;
+        }
+        .xbtn:hover{ background: rgba(255,255,255,0.14); }
+
+        .form-grid{
+            display:grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .form-row{
+            display:flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        label{
+            font-size: 12px;
+            opacity: 0.75;
+            font-weight: 700;
+        }
+        input, textarea, select{
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.20);
+            color: #eaf0ff;
+            outline: none;
+        }
+        textarea{ min-height: 110px; resize: vertical; }
+        input:focus, textarea:focus, select:focus{
+            border-color: rgba(94,234,212,0.45);
+            box-shadow: 0 0 0 3px rgba(94,234,212,0.12);
+        }
+        .full{ grid-column: 1 / -1; }
+
+        .actions{
+            display:flex;
+            justify-content:flex-end;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .danger-text{
+            color: #ffb4b4;
+            font-size: 12px;
+            opacity: 0.95;
+            margin-top: 8px;
+            white-space: pre-wrap;
+        }
+
+        /* Suggestions dropdown */
+        .suggest-wrap{ position: relative; }
+        .suggest{
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #0b1222;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            overflow: hidden;
+            z-index: 1000000;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+        }
+        .suggest .item{
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 13px;
+            line-height: 1.25;
+        }
+        .suggest .item:hover{ background: rgba(94,234,212,0.12); }
+
+        /* Leaflet ниже модалки */
+        .leaflet-container { z-index: 1 !important; }
+
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; height: auto; }
+            .right { height: 60vh; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="topbar">
+    <div class="brand">
+        <span class="dot"></span>
+        <span>TripsMap</span>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn btn-primary" onclick="openCreateModal()">＋ Воспоминание</button>
+        <button class="btn" onclick="goBack()">← К поездкам</button>
+        <button class="btn btn-danger" onclick="logout()">Выйти</button>
+    </div>
+</div>
+
+<div class="layout">
+    <!-- LEFT -->
+    <div class="left">
+        <div class="left-header">
+            <div>
+                <h2>Воспоминания</h2>
+                <div class="hint">клик — показать на карте · двойной клик — открыть</div>
+
+                <!-- ===== FILTER BY TAGS ===== -->
+                <div class="filter-panel">
+                    <div class="filter-title">Фильтр по тегам</div>
+
+                    <div class="filter-row">
+                        <input id="filterTagSearch" placeholder="Поиск тега (например: food, museum)"/>
+                    </div>
+
+                    <div id="filterTags" class="filter-tags">
+                        <span class="muted">Загрузка тегов…</span>
+                    </div>
+
+                    <div class="filter-actions">
+                        <button class="btn" onclick="clearTagFilter()">Сброс</button>
+                        <button class="btn btn-primary" onclick="applyTagFilter()">Применить</button>
+                    </div>
+
+                    <div id="filterInfo" class="muted" style="margin-top:8px;"></div>
+                </div>
+                <!-- ===== /FILTER ===== -->
+            </div>
+        </div>
+
+        <div class="mem-list" id="memList"></div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+        <div id="map"></div>
+    </div>
+</div>
+
+<!-- ===== MODAL Create Memory ===== -->
+<div id="createModal" onclick="onOverlayClick(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-head">
+            <div>
+                <div class="modal-title">Новое воспоминание</div>
+                <div class="muted">Выбери место — координаты подставятся автоматически</div>
+            </div>
+            <button class="xbtn" onclick="closeCreateModal()">✕</button>
+        </div>
+
+        <form id="createForm" onsubmit="createMemory(event)">
+            <div class="form-grid">
+                <div class="form-row full">
+                    <label for="mTitle">Название *</label>
+                    <input id="mTitle" required maxlength="140" placeholder="Например: Площадь Куйбышева"/>
+                </div>
+
+                <div class="form-row full suggest-wrap">
+                    <label for="mPlace">Место (поиск) *</label>
+                    <input id="mPlace" placeholder="Начни вводить: 'Площадь Куйбышева' / 'Tiergarten Berlin'"/>
+                    <div id="suggest" class="suggest"></div>
+                    <div class="muted" style="margin-top:6px;">
+                        Выбираешь из списка — заполняются <b>addressLabel</b>, <b>lat</b>, <b>lon</b>.
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <label>lat *</label>
+                    <input id="mLat" readonly placeholder="—"/>
+                </div>
+                <div class="form-row">
+                    <label>lon *</label>
+                    <input id="mLon" readonly placeholder="—"/>
+                </div>
+
+                <div class="form-row full">
+                    <label for="mAddress">Адрес/лейбл</label>
+                    <input id="mAddress" readonly placeholder="—"/>
+                </div>
+
+                <!-- ===== TAGS (для создания) ===== -->
+                <div class="form-row full">
+                    <label>Теги</label>
+                    <input id="tagSearch" placeholder="Поиск по тегам (например: food, museum)"/>
+                    <div id="tagPicker" class="filter-tags" style="max-height:220px;"></div>
+                    <div class="muted">Теги берутся из каталога (создаёт админ). Можно выбрать несколько.</div>
+                </div>
+
+                <div class="form-row">
+                    <label for="mVisited">Дата/время посещения</label>
+                    <input id="mVisited" type="datetime-local"/>
+                </div>
+
+                <div class="form-row">
+                    <label for="mRating">Оценка (1..5)</label>
+                    <select id="mRating">
+                        <option value="">—</option>
+                        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                    </select>
+                </div>
+
+                <div class="form-row full">
+                    <label for="mNote">Заметка</label>
+                    <textarea id="mNote" placeholder="Что запомнилось?"></textarea>
+                </div>
+            </div>
+
+            <div id="createErr" class="danger-text"></div>
+
+            <div class="actions">
+                <button type="button" class="btn" onclick="closeCreateModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Создать</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // ===== Auth =====
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "/login";
+
+    function logout(){
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+    }
+    function goBack(){
+        window.location.href = "/app";
+    }
+
+    // ===== Utils =====
+    function parseTripId(){
+        const parts = location.pathname.split("/").filter(Boolean);
+        return Number(parts[1]);
+    }
+
+    async function apiGet(url){
+        const r = await fetch(url, { headers: { "Authorization": "Bearer " + token } });
+        if (r.status === 401) { localStorage.removeItem("token"); window.location.href = "/login"; return null; }
+        if (!r.ok) throw new Error((await r.text()) || ("HTTP " + r.status));
+        return r.json();
+    }
+
+    async function apiGetAllow404(url){
+        const r = await fetch(url, { headers: { "Authorization": "Bearer " + token } });
+        if (r.status === 401) { localStorage.removeItem("token"); window.location.href = "/login"; return null; }
+        if (r.status === 404) return { __notFound: true };
+        if (!r.ok) throw new Error((await r.text()) || ("HTTP " + r.status));
+        return r.json();
+    }
+
+    async function apiPost(url, bodyObj){
+        const r = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(bodyObj)
+        });
+        if (r.status === 401) { localStorage.removeItem("token"); window.location.href = "/login"; return null; }
+        if (!r.ok) throw new Error((await r.text()) || ("HTTP " + r.status));
+        return r.json();
+    }
+
+    function escapeHtml(s){
+        return String(s ?? "")
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
+    }
+
+    const tripId = parseTripId();
+
+    // ===== Map init =====
+    const map = L.map("map", { zoomControl: true });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(map);
+    map.setView([55.75, 37.61], 4);
+
+    const markerByMemoryId = new Map();
+    let leafletMarkers = [];
+
+    function clearMapMarkers(){
+        for(const mk of leafletMarkers){
+            try { map.removeLayer(mk); } catch(e){}
+        }
+        leafletMarkers = [];
+        markerByMemoryId.clear();
+    }
+
+    function buildThumbMarker({tripId, memoryId, lat, lon, coverUrl, count}) {
+        const safeUrl = coverUrl ? coverUrl :
+            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23111'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23aaa' font-size='18'%3Eno photo%3C/text%3E%3C/svg%3E";
+
+        const html = `
+      <div class="mem-pin-wrap">
+        <img src="${safeUrl}" alt="memory">
+        <div class="mem-count">${count ?? 0}</div>
+      </div>
+    `;
+
+        const icon = L.divIcon({
+            html,
+            className: "",
+            iconSize: [92, 110],
+            iconAnchor: [46, 110]
+        });
+
+        const marker = L.marker([lat, lon], { icon }).addTo(map);
+
+        marker.on("click", () => {
+            window.location.href = `/trips/${tripId}/memories/${memoryId}`;
+        });
+
+        leafletMarkers.push(marker);
+        return marker;
+    }
+
+    function renderMemoryCard(m, coverUrl, count) {
+        const list = document.getElementById("memList");
+        const card = document.createElement("div");
+        card.className = "mem-card";
+        card.innerHTML = `
+      <div class="mem-thumb">
+        <img src="${coverUrl ?? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23111'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23aaa' font-size='18'%3Eno photo%3C/text%3E%3C/svg%3E"}" alt="thumb"/>
+        <div class="mem-count-badge">${count ?? 0}</div>
+      </div>
+      <div>
+        <div class="mem-title">${escapeHtml(m.title ?? ("Memory #" + m.id))}</div>
+        <div class="mem-sub">
+          ${escapeHtml(m.addressLabel ?? "")}
+          <div style="margin-top:4px; opacity:0.75;">
+            <code>${(m.lat ?? "").toString().slice(0,8)}, ${(m.lon ?? "").toString().slice(0,9)}</code>
+          </div>
+        </div>
+      </div>
+    `;
+
+        card.addEventListener("click", () => {
+            const marker = markerByMemoryId.get(m.id);
+            if (marker) map.flyTo(marker.getLatLng(), 14, { duration: 0.7 });
+        });
+
+        card.addEventListener("dblclick", () => {
+            window.location.href = `/trips/${tripId}/memories/${m.id}`;
+        });
+
+        list.appendChild(card);
+    }
+
+    async function loadCoverAndCount(memoryId){
+        const photos = await apiGet(`/api/trips/${tripId}/memories/${memoryId}/photos`);
+        if (!photos) return { coverUrl: null, count: 0 };
+        const coverUrl = photos[0]?.url ?? photos[0]?.photoUrl ?? photos[0]?.link ?? null;
+        return { coverUrl, count: photos.length };
+    }
+
+    async function renderMemories(memories){
+        const list = document.getElementById("memList");
+        list.innerHTML = "";
+        clearMapMarkers();
+
+        const markers = [];
+
+        for (const m of memories) {
+            const { coverUrl, count } = await loadCoverAndCount(m.id);
+            renderMemoryCard(m, coverUrl, count);
+
+            if (typeof m.lat === "number" && typeof m.lon === "number") {
+                const marker = buildThumbMarker({
+                    tripId,
+                    memoryId: m.id,
+                    lat: m.lat,
+                    lon: m.lon,
+                    coverUrl,
+                    count
+                });
+                markerByMemoryId.set(m.id, marker);
+                markers.push(marker);
+            }
+        }
+
+        if (markers.length > 0) {
+            const group = L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.25));
+        }
+    }
+
+    async function loadMemoriesAll(){
+        const memories = await apiGet(`/api/trips/${tripId}/memories`);
+        if (!memories) return;
+        await renderMemories(memories);
+    }
+
+    // ==========================
+    // TAGS: catalog + filter UI
+    // ==========================
+    let allTags = [];
+    const filterSelectedTagIds = new Set();
+
+    // create-modal tags
+    const createSelectedTagIds = new Set();
+
+    function buildTagQuery(tagIds){
+        return tagIds.map(id => "tagIds=" + encodeURIComponent(id)).join("&");
+    }
+
+    const FILTER_URL_TRIP = (tripId, ids) => `/api/trips/${tripId}/memories/filter?${buildTagQuery(ids)}`;
+    const FILTER_URL_GLOBAL = (ids) => `/api/memories/filter?${buildTagQuery(ids)}`; // fallback если вдруг не переделала
+
+    async function ensureTagsLoaded(){
+        const tags = await apiGet("/api/tags");
+        allTags = Array.isArray(tags) ? tags : [];
+        renderFilterTagChips(document.getElementById("filterTagSearch").value);
+        renderCreateTagChips(document.getElementById("tagSearch").value);
+        updateFilterInfo();
+    }
+
+    function updateFilterInfo(){
+        const info = document.getElementById("filterInfo");
+        if(filterSelectedTagIds.size === 0){
+            info.textContent = "Фильтр не выбран — показываю все воспоминания.";
+        } else {
+            info.textContent = `Выбрано тегов: ${filterSelectedTagIds.size}. Нажми “Применить”.`;
+        }
+    }
+
+    function renderFilterTagChips(searchText){
+        const box = document.getElementById("filterTags");
+        box.innerHTML = "";
+
+        const q = (searchText ?? "").trim().toLowerCase();
+        const filtered = allTags.filter(t => ((t.name ?? "").toLowerCase().includes(q)));
+
+        if(filtered.length === 0){
+            box.innerHTML = `<span class="muted">Теги не найдены</span>`;
+            return;
+        }
+
+        for(const t of filtered){
+            const chip = document.createElement("div");
+            chip.className = "tag-chip" + (filterSelectedTagIds.has(t.id) ? " selected" : "");
+            chip.textContent = t.name ?? ("Tag #" + t.id);
+            chip.title = "id: " + t.id;
+
+            chip.addEventListener("click", () => {
+                if(filterSelectedTagIds.has(t.id)) filterSelectedTagIds.delete(t.id);
+                else filterSelectedTagIds.add(t.id);
+                chip.classList.toggle("selected");
+                updateFilterInfo();
+            });
+
+            box.appendChild(chip);
+        }
+    }
+
+    function renderCreateTagChips(searchText){
+        const box = document.getElementById("tagPicker");
+        box.innerHTML = "";
+
+        const q = (searchText ?? "").trim().toLowerCase();
+        const filtered = allTags.filter(t => ((t.name ?? "").toLowerCase().includes(q)));
+
+        if(filtered.length === 0){
+            box.innerHTML = `<span class="muted">Теги не найдены</span>`;
+            return;
+        }
+
+        for(const t of filtered){
+            const chip = document.createElement("div");
+            chip.className = "tag-chip" + (createSelectedTagIds.has(t.id) ? " selected" : "");
+            chip.textContent = t.name ?? ("Tag #" + t.id);
+            chip.title = "id: " + t.id;
+
+            chip.addEventListener("click", () => {
+                if(createSelectedTagIds.has(t.id)) createSelectedTagIds.delete(t.id);
+                else createSelectedTagIds.add(t.id);
+                chip.classList.toggle("selected");
+            });
+
+            box.appendChild(chip);
+        }
+    }
+
+    document.getElementById("filterTagSearch").addEventListener("input", (e) => {
+        renderFilterTagChips(e.target.value);
+    });
+
+    document.getElementById("tagSearch").addEventListener("input", (e) => {
+        renderCreateTagChips(e.target.value);
+    });
+
+    async function applyTagFilter(){
+        if(filterSelectedTagIds.size === 0){
+            await loadMemoriesAll();
+            return;
+        }
+
+        const ids = Array.from(filterSelectedTagIds);
+
+        // 1) пробуем новый эндпоинт (внутри поездки)
+        const url1 = FILTER_URL_TRIP(tripId, ids);
+        const res1 = await apiGetAllow404(url1);
+
+        if(res1 && res1.__notFound){
+            // 2) fallback на старый эндпоинт (если не переделала контроллер)
+            const url2 = FILTER_URL_GLOBAL(ids);
+            const memories = await apiGet(url2);
+            if(!memories) return;
+            await renderMemories(memories);
+            return;
+        }
+
+        // если не 404 — значит вернулся список
+        await renderMemories(res1 || []);
+    }
+
+    async function clearTagFilter(){
+        filterSelectedTagIds.clear();
+        renderFilterTagChips(document.getElementById("filterTagSearch").value);
+        updateFilterInfo();
+        await loadMemoriesAll();
+    }
+
+    // ======================
+    // Modal create memory
+    // ======================
+    const modal = document.getElementById("createModal");
+    const suggestBox = document.getElementById("suggest");
+
+    let selectedLat = null;
+    let selectedLon = null;
+    let selectedLabel = null;
+
+    function openCreateModal(){
+        document.getElementById("createErr").textContent = "";
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+
+        // reset place
+        selectedLat = selectedLon = null;
+        selectedLabel = null;
+        document.getElementById("mLat").value = "";
+        document.getElementById("mLon").value = "";
+        document.getElementById("mAddress").value = "";
+        document.getElementById("mPlace").value = "";
+
+        // reset create tags
+        createSelectedTagIds.clear();
+        document.getElementById("tagSearch").value = "";
+
+        // load tags catalog (if not loaded)
+        ensureTagsLoaded().catch(err => {
+            console.error(err);
+            document.getElementById("createErr").textContent = "Не удалось загрузить теги: " + err.message;
+        });
+
+        setTimeout(() => document.getElementById("mTitle").focus(), 0);
+    }
+
+    function closeCreateModal(){
+        modal.style.display = "none";
+        document.body.style.overflow = "";
+        hideSuggest();
+    }
+
+    function onOverlayClick(e){
+        closeCreateModal();
+    }
+
+    // ===== Geo search (suggestions) =====
+    const GEO_URL = "/api/geo/search";
+    let geoTimer = null;
+
+    document.getElementById("mPlace").addEventListener("input", (e) => {
+        const q = e.target.value.trim();
+        selectedLat = selectedLon = null;
+        selectedLabel = null;
+        document.getElementById("mLat").value = "";
+        document.getElementById("mLon").value = "";
+        document.getElementById("mAddress").value = "";
+
+        if (geoTimer) clearTimeout(geoTimer);
+        if (q.length < 3) { hideSuggest(); return; }
+        geoTimer = setTimeout(() => geoLookup(q).catch(console.error), 250);
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!suggestBox.contains(e.target) && e.target.id !== "mPlace") hideSuggest();
+    });
+
+    function hideSuggest(){
+        suggestBox.style.display = "none";
+        suggestBox.innerHTML = "";
+    }
+
+    function showSuggest(items){
+        suggestBox.innerHTML = "";
+        for (const it of items) {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.textContent = it.label;
+            div.addEventListener("click", () => selectPlace(it));
+            suggestBox.appendChild(div);
+        }
+        suggestBox.style.display = items.length ? "block" : "none";
+    }
+
+    function normalizeGeoItem(x){
+        const label = x.label ?? x.displayName ?? x.display_name ?? x.name ?? x.title ?? "—";
+        const lat = Number(x.lat ?? x.latitude);
+        const lon = Number(x.lon ?? x.lng ?? x.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+        return { label, lat, lon };
+    }
+
+    async function geoLookup(q){
+        const url = `${GEO_URL}?q=${encodeURIComponent(q)}`;
+        const r = await fetch(url);
+        if (!r.ok) { hideSuggest(); return; }
+        const data = await r.json();
+        const arr = Array.isArray(data) ? data : (data.results ?? data.items ?? []);
+        const items = arr.map(normalizeGeoItem).filter(Boolean).slice(0, 8);
+        showSuggest(items);
+    }
+
+    function selectPlace(it){
+        selectedLat = it.lat;
+        selectedLon = it.lon;
+        selectedLabel = it.label;
+
+        document.getElementById("mPlace").value = it.label;
+        document.getElementById("mLat").value = String(it.lat);
+        document.getElementById("mLon").value = String(it.lon);
+        document.getElementById("mAddress").value = it.label;
+
+        hideSuggest();
+    }
+
+    // ===== Create memory submit =====
+    // ⚠️ Поменяй путь, если у тебя другой
+    const TAG_ATTACH_URL = (tripId, memoryId) => `/api/trips/${tripId}/memories/${memoryId}/tags`;
+
+    async function createMemory(event){
+        event.preventDefault();
+        const errBox = document.getElementById("createErr");
+        errBox.textContent = "";
+
+        const title = document.getElementById("mTitle").value.trim();
+        const note = document.getElementById("mNote").value.trim();
+        const visitedAtRaw = document.getElementById("mVisited").value;
+        const ratingRaw = document.getElementById("mRating").value;
+
+        if (!title) { errBox.textContent = "Заполни название."; return; }
+        if (!selectedLat || !selectedLon) { errBox.textContent = "Выбери место из подсказок, чтобы были координаты."; return; }
+
+        let visitedAt = null;
+        if (visitedAtRaw) visitedAt = visitedAtRaw.length === 16 ? (visitedAtRaw + ":00") : visitedAtRaw;
+
+        const body = {
+            title,
+            note: note || null,
+            visitedAt: visitedAt,
+            lat: selectedLat,
+            lon: selectedLon,
+            addressLabel: selectedLabel || null,
+            rating: ratingRaw ? Number(ratingRaw) : null
+        };
+
+        try{
+            // 1) create memory
+            const created = await apiPost(`/api/trips/${tripId}/memories`, body);
+            if(!created) throw new Error("create memory вернул пустой ответ");
+
+            const memoryId = created.id ?? created.memoryId ?? created.memory?.id;
+            if(!memoryId) throw new Error("Не нашёл id созданного воспоминания в ответе (проверь MemoryResponse)");
+
+            // 2) attach tags (если выбраны)
+            const ids = Array.from(createSelectedTagIds);
+            if(ids.length > 0){
+                await apiPost(TAG_ATTACH_URL(tripId, memoryId), { tagIds: ids });
+            }
+
+            closeCreateModal();
+            await loadMemoriesAll();
+        }catch(e){
+            console.error(e);
+            errBox.textContent = "Ошибка создания: " + (e?.message ?? e);
+        }
+    }
+
+    // ===== init =====
+    (async function init(){
+        await ensureTagsLoaded();
+        await loadMemoriesAll();
+    })().catch(err => {
+        console.error(err);
+        alert("Ошибка загрузки: " + err.message);
+    });
+</script>
+
+</body>
+</html>
+
